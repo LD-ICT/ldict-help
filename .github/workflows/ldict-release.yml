@@ -1,0 +1,38 @@
+name: LD ICT Hulp release
+
+# Builds LD ICT Hulp for Windows, macOS and Linux with RustDesk's own build workflow and puts the files on a GitHub
+# release of this repository. Start it by pushing a tag like ldict-1.5.3-1 (RustDesk's version, then our build
+# number). The website (LD-ICT/ld-ict-website, .github/workflows/hulp-release.yml) copies the release to
+# kluis.ldict.nl/hulp/, where /api/hulp/download and the program's update check read it.
+#
+# This repository has no secrets: no code signing yet (PLAN-HULP-OP-AFSTAND.md, decision B4), and the copy to
+# LD ICT's storage happens in the website's private repository.
+
+on:
+  push:
+    tags:
+      - "ldict-[0-9]+.[0-9]+.[0-9]+-[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Server key is set
+        run: |
+          KEY=$(tr -d '[:space:]' < ldict/key.pub)
+          if [ "$(printf '%s' "$KEY" | base64 -d 2>/dev/null | wc -c)" != "32" ]; then
+            echo "::error::ldict/key.pub must hold the support server's public key (base64, 32 bytes). Copy it from /admin/servers/hulp."
+            exit 1
+          fi
+
+  build:
+    needs: check
+    uses: ./.github/workflows/flutter-build.yml
+    with:
+      upload-artifact: true
+      upload-tag: ${{ github.ref_name }}
+      publish-update-metadata: false
