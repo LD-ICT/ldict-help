@@ -137,14 +137,16 @@ mod tests {
         assert_eq!(bytes.len(), 32);
     }
 
+    // Checks the tables, not apply(): apply() changes process-wide settings, which would leak into RustDesk's own
+    // tests running in the same process (a permanent password can't be set once it is disabled).
     #[test]
-    fn apply_sets_server_key_and_name() {
-        apply();
-        assert_eq!(*config::APP_NAME.read().unwrap(), APP_NAME);
-        let overwrite = config::OVERWRITE_SETTINGS.read().unwrap();
-        assert_eq!(overwrite.get(keys::OPTION_CUSTOM_RENDEZVOUS_SERVER).unwrap(), SERVER);
-        assert_eq!(overwrite.get(keys::OPTION_KEY).unwrap(), KEY_TRIMMED);
-        assert_eq!(overwrite.get(keys::OPTION_APPROVE_MODE).unwrap(), "click");
+    fn settings_fix_server_key_and_approval() {
+        let get = |key: &str| OVERRIDE.iter().find(|(k, _)| *k == key).map(|(_, v)| *v);
+        assert_eq!(get(keys::OPTION_CUSTOM_RENDEZVOUS_SERVER), Some(SERVER));
+        assert_eq!(get(keys::OPTION_RELAY_SERVER), Some(SERVER));
+        assert_eq!(get(keys::OPTION_KEY), Some(KEY_TRIMMED));
+        assert_eq!(get(keys::OPTION_APPROVE_MODE), Some("click"));
+        assert_eq!(get(keys::OPTION_VERIFICATION_METHOD), Some("use-temporary-password"));
     }
 
     #[test]
