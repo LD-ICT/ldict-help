@@ -1,9 +1,9 @@
-name: LD ICT Hulp release
+name: LD ICT Help release
 
-# Builds LD ICT Hulp for Windows, macOS and Linux with RustDesk's own build workflow and puts the files on a GitHub
+# Builds LD ICT Help for Windows, macOS and Linux with RustDesk's own build workflow and puts the files on a GitHub
 # release of this repository. Start it by pushing a tag like ldict-1.5.3-1 (RustDesk's version, then our build
 # number). The website (LD-ICT/ld-ict-website, .github/workflows/hulp-release.yml) copies the release to
-# kluis.ldict.nl/hulp/, where /api/hulp/download and the program's update check read it.
+# kluis.ldict.nl/hulp/, behind the links at www.ldict.nl/api/hulp/download/<platform>.
 #
 # This repository has no secrets: no code signing yet (PLAN-HULP-OP-AFSTAND.md, decision B4), and the copy to
 # LD ICT's storage happens in the website's private repository.

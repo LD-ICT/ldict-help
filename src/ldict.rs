@@ -1,4 +1,4 @@
-//! LD ICT Hulp: the parts of this fork that are ours (see ldict/README.md).
+//! LD ICT Help: the parts of this fork that are ours (see ldict/README.md).
 //!
 //! Everything LD ICT changes lives in this module and in ldict/. The upstream code only calls `apply()` (from
 //! common.rs, before any setting is read), so a rebase onto a new RustDesk release touches as few lines as possible.
@@ -6,9 +6,13 @@
 use base::config::keys;
 use hbb_common::config;
 
-/// The name of the program. No spaces: RustDesk also uses it for its URI scheme (ldict-hulp://), paths and the
+/// The technical name of the program, the same in every language. No spaces: RustDesk also uses it for its URI scheme (ldict-help://), paths and the
 /// Windows service. The macOS bundle id (config::ORG) stays RustDesk's: it must match the app's Info.plist.
-pub const APP_NAME: &str = "LDICT-Hulp";
+pub const APP_NAME: &str = "LDICT-Help";
+
+/// The name people see: Dutch on a Dutch computer (or when Dutch is chosen in the settings), English otherwise.
+pub const DISPLAY_NAME: &str = "LD ICT Help";
+pub const DISPLAY_NAME_NL: &str = "LD ICT Hulp";
 
 /// The fixed name of LD ICT's support server (the dashboard points it at the active server).
 pub const SERVER: &str = "hulp.ldict.nl";
@@ -69,6 +73,36 @@ const fn trim_ascii(value: &str) -> &str {
     }
 }
 
+/// The display name for a resolved RustDesk language code ("nl", "en", ...).
+pub fn display_name_for(lang: &str) -> &'static str {
+    if lang.to_lowercase().starts_with("nl") {
+        DISPLAY_NAME_NL
+    } else {
+        DISPLAY_NAME
+    }
+}
+
+/// The display name for this computer: the language chosen in the settings, else the system's.
+pub fn display_name() -> String {
+    let saved = config::LocalConfig::get_option("lang");
+    let lang = if saved.is_empty() || saved == "default" {
+        system_locale()
+    } else {
+        saved
+    };
+    display_name_for(&lang).to_owned()
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn system_locale() -> String {
+    sys_locale::get_locale().unwrap_or_default()
+}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+fn system_locale() -> String {
+    String::new()
+}
+
 /// Puts LD ICT's name and fixed settings in place. Safe to call more than once.
 pub fn apply() {
     *config::APP_NAME.write().unwrap() = APP_NAME.to_owned();
@@ -111,6 +145,15 @@ mod tests {
         assert_eq!(overwrite.get(keys::OPTION_CUSTOM_RENDEZVOUS_SERVER).unwrap(), SERVER);
         assert_eq!(overwrite.get(keys::OPTION_KEY).unwrap(), KEY_TRIMMED);
         assert_eq!(overwrite.get(keys::OPTION_APPROVE_MODE).unwrap(), "click");
+    }
+
+    #[test]
+    fn display_name_follows_the_language() {
+        assert_eq!(display_name_for("nl"), "LD ICT Hulp");
+        assert_eq!(display_name_for("nl-NL"), "LD ICT Hulp");
+        assert_eq!(display_name_for("en"), "LD ICT Help");
+        assert_eq!(display_name_for("de"), "LD ICT Help");
+        assert_eq!(display_name_for(""), "LD ICT Help");
     }
 
     #[test]

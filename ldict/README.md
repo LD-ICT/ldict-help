@@ -1,6 +1,6 @@
-# LD ICT Hulp
+# LD ICT Help
 
-LD ICT Hulp is the remote support program of [LD ICT](https://www.ldict.nl): a fork of
+LD ICT Help (Dutch: hulp op afstand) is the remote support program of [LD ICT](https://www.ldict.nl): a fork of
 [RustDesk](https://github.com/rustdesk/rustdesk) (AGPL-3.0) that only talks to LD ICT's own RustDesk server. The full
 plan is `PLAN-HULP-OP-AFSTAND.md` in LD ICT's website repository.
 
@@ -8,11 +8,13 @@ plan is `PLAN-HULP-OP-AFSTAND.md` in LD ICT's website repository.
 
 Kept as small as possible, so a new RustDesk release is an easy rebase.
 
-- `src/ldict.rs`: the name (`LDICT-Hulp`), the fixed server `hulp.ldict.nl` with its public key, and the settings a
+- `src/ldict.rs`: the technical name `LDICT-Help` (paths, the `ldict-help://` links, the Windows service) and the name
+  people see: "LD ICT Hulp" on a Dutch computer, "LD ICT Help" otherwise, the fixed server `hulp.ldict.nl` with its public key, and the settings a
   customer can't change: no fixed password (only "Accept" at the computer), no direct IP access, no RustDesk account
   or address book, no update check against rustdesk.com, and the server, proxy and websocket settings hidden.
-- Two hooks in `src/common.rs` (`load_custom_client` and `read_custom_client` call `ldict::apply()`) and the module
-  line in `src/lib.rs`.
+- Small hooks: `src/common.rs` (`load_custom_client` and `read_custom_client` call `ldict::apply()`), `src/lang.rs`
+  (translations say the display name instead of "RustDesk"), `src/flutter_ffi.rs` (`main_get_app_name_sync`, the
+  window titles) and the module line in `src/lib.rs`.
 - `ldict/icons/` and `ldict/brand.sh`: the LD ICT icons, copied over RustDesk's.
 - `ldict/key.pub`: the public key of the server (copy it from `/admin/servers/hulp` in the admin).
 - `.github/workflows/ldict-release.yml`: a release build on a tag like `ldict-1.5.3-1`.
