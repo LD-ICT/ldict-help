@@ -1170,6 +1170,11 @@ impl Connection {
                     }
                 }
                 _ = second_timer.tick() => {
+                    if !crate::ldict::tick(conn.inner.id()) {
+                        conn.send_close_reason_no_retry("Onbeheerde toegang is uitgezet").await;
+                        conn.on_close("LD ICT unattended access switched off", true).await;
+                        break;
+                    }
                     #[cfg(windows)]
                     conn.portable_check();
                     raii::AuthedConnID::check_wake_lock_on_setting_changed();
@@ -1906,6 +1911,20 @@ impl Connection {
         }
         self.lr.trusted_device_v2_token.clear();
         self.authorized = true;
+        crate::ldict::started(
+            self.inner.id(),
+            if self.file_transfer.is_some() {
+                "file-transfer"
+            } else if self.terminal {
+                "terminal"
+            } else if self.view_camera {
+                "camera"
+            } else if matches!(self.lr.union, Some(login_request::Union::PortForward(_))) {
+                "port-forward"
+            } else {
+                "desktop"
+            },
+        );
         self.unauthorized_id = None;
         // One-time means gone once it has let a peer in, not once that peer
         // leaves. This session's later logins come in on the password the
@@ -2918,6 +2937,12 @@ impl Connection {
                 return true;
             }
             self.reset_session_scope_for_login();
+            // LD ICT Help: only with a connection token from LD ICT's admin.
+            if let Err(err) = crate::ldict::admit(self.inner.id(), &lr.ldict_token).await {
+                self.send_login_error(err).await;
+                sleep(1.).await;
+                return false;
+            }
             if !self.check_id_whitelist().await {
                 return false;
             }
@@ -3040,6 +3065,14 @@ impl Connection {
                 crate::get_builtin_option(keys::OPTION_ALLOW_LOGON_SCREEN_PASSWORD) == "Y"
                     && is_logon();
 
+            // LD ICT Help: unattended access, allowed by both the token and the device's own setting.
+            if crate::ldict::take_unattended(self.inner.id()) {
+                if !self.send_logon_response_and_keep_alive().await {
+                    return false;
+                }
+                self.try_start_cm(lr.my_id, lr.my_name, self.authorized);
+                return true;
+            }
             if (password::approve_mode() == ApproveMode::Click && !allow_logon_screen_password)
                 || password::approve_mode() == ApproveMode::Both && !password::has_valid_password()
             {
@@ -5306,6 +5339,7 @@ impl Connection {
             return;
         }
         self.closed = true;
+        crate::ldict::ended(self.inner.id());
         // If voice A,B -> C, and A,B has voice call
         // B disconnects, C will reset the voice call input.
         //

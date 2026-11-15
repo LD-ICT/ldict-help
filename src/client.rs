@@ -3873,6 +3873,7 @@ impl LoginConfigHandler {
         if self.skips_saved_password() {
             lr.password.clear();
         }
+        lr.ldict_token = crate::ldict::outgoing_token(&self.id);
         match self.conn_type {
             ConnType::FILE_TRANSFER => lr.set_file_transfer(FileTransfer {
                 dir: self.get_remote_dir(),
@@ -4694,6 +4695,9 @@ pub async fn handle_hash(
             return false;
         }
     }
+    // LD ICT Help: a connection token from an ldict-help:// link is not a password.
+    let ldict_peer = lc.read().unwrap().id.clone();
+    let password_preset = if crate::ldict::remember_outgoing(&ldict_peer, password_preset) { "" } else { password_preset };
     // last password
     let mut password = lc.read().unwrap().password.clone();
     // preset password

@@ -684,6 +684,7 @@ pub async fn start_server(is_server: bool, no_server: bool) {
             }
         }
         crate::common::set_server_running(true);
+        crate::ldict::start_status_reports();
         if !cfg!(windows) || crate::is_server() {
             std::thread::spawn(move || {
                 if let Err(err) = crate::ipc::start("") {
