@@ -15,9 +15,25 @@ Kept as small as possible, so a new RustDesk release is an easy rebase.
 - Small hooks: `src/common.rs` (`load_custom_client` and `read_custom_client` call `ldict::apply()`), `src/lang.rs`
   (translations say the display name instead of "RustDesk"), `src/flutter_ffi.rs` (`main_get_app_name_sync`, the
   window titles) and the module line in `src/lib.rs`.
+- `src/ldict/token.rs` and `src/ldict/report.rs`: connection tokens and reports. A connection needs a short-lived
+  token signed by LD ICT's admin (Ed25519, public key in `ldict/token.pub`); the technician's program gets it from an
+  `ldict-help://connection/new/<id>?password=ldict1....` link and sends it in a new login request field
+  (`ldict_token`, `libs/base/protos/message.proto`). The customer's program refuses every login without a valid token
+  for its own id, also with a password. It starts without "Accept" only when both the token and the device's setting
+  at www.ldict.nl allow unattended access. It reports each session's start, a heartbeat every minute and the end to
+  `/api/hulp/sessies/melding`, and its version and name to `/api/hulp/apparaten/status` every hour.
+- More hooks for that: `src/client.rs` (`handle_hash` keeps the token out of the password, `create_login_msg` sends
+  it), `src/server/connection.rs` (admit, unattended, started, every second, closed) and `src/server.rs` (the hourly
+  status report).
 - `ldict/icons/` and `ldict/brand.sh`: the LD ICT icons, copied over RustDesk's.
-- `ldict/key.pub`: the public key of the server (copy it from `/admin/servers/hulp` in the admin).
-- `.github/workflows/ldict-release.yml`: a release build on a tag like `ldict-1.5.3-1`.
+- `ldict/key.pub`: the public key of the server, and `ldict/token.pub`: LD ICT's public key for connection tokens
+  (copy both from `/admin/servers/hulp` in the admin).
+- `.github/workflows/ldict-release.yml`: a release build on a tag like `ldict-1.5.3-2`, or started by hand with that
+  tag. The number after the last dash must match `BUILD` in `src/ldict.rs`.
+
+Known: the Linux package is still called `rustdesk` and installs to RustDesk's paths, so it replaces a normal RustDesk
+on that computer. Renaming it means changing RustDesk's packaging throughout; not worth it while few customers use
+Linux.
 
 ## Updating to a new RustDesk release
 

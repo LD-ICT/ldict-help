@@ -37,15 +37,27 @@ jobs:
             echo "::error::The tag must look like ldict-1.5.3-1."
             exit 1
           fi
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
-              echo "::error::Tag $TAG already exists. Pick the next build number."
-              exit 1
-            fi
-            git tag "$TAG" "$GITHUB_SHA"
-            git push origin "refs/tags/$TAG"
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag $TAG already exists. Pick the next build number."
+            exit 1
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Build number matches src/ldict.rs
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          BUILD=$(sed -n 's/^pub const BUILD: u32 = \([0-9]*\);/\1/p' src/ldict.rs)
+          if [ "${TAG##*-}" != "$BUILD" ]; then
+            echo "::error::Tag $TAG ends in ${TAG##*-}, but BUILD in src/ldict.rs is $BUILD. Raise BUILD first."
+            exit 1
+          fi
+      - name: Token key is set
+        run: |
+          KEY=$(tr -d '[:space:]' < ldict/token.pub)
+          if [ "$(printf '%s' "$KEY" | base64 -d 2>/dev/null | wc -c)" != "32" ]; then
+            echo "::error::ldict/token.pub must hold LD ICT's public key for connection tokens (base64, 32 bytes). Copy it from /admin/servers/hulp."
+            exit 1
+          fi
       - name: Server key is set
         run: |
           KEY=$(tr -d '[:space:]' < ldict/key.pub)
@@ -53,6 +65,13 @@ jobs:
             echo "::error::ldict/key.pub must hold the support server's public key (base64, 32 bytes). Copy it from /admin/servers/hulp."
             exit 1
           fi
+      - name: Create the tag (when started by hand)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
 
   build:
     needs: check

@@ -86,6 +86,8 @@ message LoginRequest {
   string avatar = 17;
   bytes trusted_device_v2_token = 18;
   bool trusted_device_v2_supported = 19;
+  // LD ICT Help: the connection token from LD ICT's admin (src/ldict/token.rs).
+  string ldict_token = 100;
 }
 
 message Terminal {

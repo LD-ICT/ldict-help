@@ -6,6 +6,16 @@
 use base::config::keys;
 use hbb_common::config;
 
+pub mod token;
+mod report;
+pub use report::{
+    admit, ended, full_version, outgoing_token, remember_outgoing, start_status_reports, started, take_unattended, tick,
+};
+
+/// Our build number on top of RustDesk's version: the release tag is ldict-<RustDesk version>-<BUILD>. The release
+/// workflow refuses a tag whose number doesn't match. Raise it for every release.
+pub const BUILD: u32 = 2;
+
 /// The technical name of the program, the same in every language. No spaces: RustDesk also uses it for its URI scheme (ldict-help://), paths and the
 /// Windows service. The macOS bundle id (config::ORG) stays RustDesk's: it must match the app's Info.plist.
 pub const APP_NAME: &str = "LDICT-Help";
@@ -29,7 +39,8 @@ const OVERRIDE: &[(&str, &str)] = &[
     (keys::OPTION_KEY, KEY_TRIMMED),
     // No RustDesk account server.
     (keys::OPTION_API_SERVER, ""),
-    // No fixed password: only "Accepteren" by the person at the computer (until phase 2 adds connect tokens).
+    // No fixed password: a connection needs a token from LD ICT's admin (token.rs) and then "Accepteren" by the
+    // person at the computer, unless the token and the device both allow unattended access (report.rs).
     (keys::OPTION_VERIFICATION_METHOD, "use-temporary-password"),
     (keys::OPTION_APPROVE_MODE, "click"),
     // Updates come from LD ICT, not from rustdesk.com.
