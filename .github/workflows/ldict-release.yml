@@ -2,7 +2,7 @@ name: LD ICT Help release
 
 # Builds LD ICT Help for Windows, macOS and Linux with RustDesk's own build workflow and puts the files on a GitHub
 # release of this repository. Start it by pushing a tag like ldict-1.5.3-1 (RustDesk's version, then our build
-# number). The website (LD-ICT/ld-ict-website, .github/workflows/hulp-release.yml) copies the release to
+# number), or run it by hand (Actions, "Run workflow") with that tag: it then creates the tag on the chosen branch. The website (LD-ICT/ld-ict-website, .github/workflows/hulp-release.yml) copies the release to
 # kluis.ldict.nl/hulp/, behind the links at www.ldict.nl/api/hulp/download/<platform>.
 #
 # This repository has no secrets: no code signing yet (PLAN-HULP-OP-AFSTAND.md, decision B4), and the copy to
@@ -12,6 +12,11 @@ on:
   push:
     tags:
       - "ldict-[0-9]+.[0-9]+.[0-9]+-[0-9]+"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, like ldict-1.5.3-1"
+        required: true
 
 permissions:
   contents: write
@@ -19,8 +24,28 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+      - name: Release tag
+        id: tag
+        env:
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          if ! printf '%s' "$TAG" | grep -Eq '^ldict-[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$'; then
+            echo "::error::The tag must look like ldict-1.5.3-1."
+            exit 1
+          fi
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+              echo "::error::Tag $TAG already exists. Pick the next build number."
+              exit 1
+            fi
+            git tag "$TAG" "$GITHUB_SHA"
+            git push origin "refs/tags/$TAG"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
       - name: Server key is set
         run: |
           KEY=$(tr -d '[:space:]' < ldict/key.pub)
@@ -34,5 +59,5 @@ jobs:
     uses: ./.github/workflows/flutter-build.yml
     with:
       upload-artifact: true
-      upload-tag: ${{ github.ref_name }}
+      upload-tag: ${{ needs.check.outputs.tag }}
       publish-update-metadata: false
